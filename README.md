@@ -4,7 +4,7 @@
 
 ### Install
 ```
-conda env create -f environment.yaml
+conda env create -f environment.yaml -n sdxl-websocket
 ```
 
 ### Run
