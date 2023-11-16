@@ -1,18 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Alert,
   Box,
-  Dialog,
   TextField,
   Button,
   Card,
-  CardContent,
   ImageList,
   ImageListItem,
   LinearProgress,
   Modal,
   Typography,
-  CardMedia,
   CircularProgress,
   Grid,
   Container,
@@ -20,37 +17,26 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 import * as msgpack from '@msgpack/msgpack';
-// import { useUserToken } from '@/context/userContext';
-import { examplePrompts } from './examplePrompts';
 
 const SDXLComponent = () => {
   const [prompt, setPrompt] = useState('');
   const [images, setImages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showExamples, setShowExamples] = useState(true);
   const [textRows, setTextRows] = useState(1);
   const [progress, setProgress] = useState(0);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
-  const [userImages, setUserImages] = useState([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [isModalOpen, setModalOpen] = useState(false);
   const [currentImage, setCurrentImage] = useState(null);
 
-  // const token = useUserToken(); // this is the user's fixed identity token not the JWT token
-  const token = '';
-
-  // const BACKEND_URL = 'http://localhost:8000';
   const BACKEND_BASE = 'localhost:50217';
   const BACKEND_URL = `http://${BACKEND_BASE}`;
   const BACKEND_URL_WS = `ws://${BACKEND_BASE}/images/generate-ws`;
 
-  const IMAGE_GAP = 10;
-  const JWT_STORAGE_KEY = 'cyh-jwtToken';
-  const width = 1024;
-  const height = 1024;
-  // const width = 1536;
-  // const height = 640;
+  const sizes = [[1024, 1024], [1536, 640]];
+  const width = sizes[0][0];
+  const height = sizes[0][1];
   const useBinary = true;
 
   useEffect(() => {
@@ -59,95 +45,35 @@ const SDXLComponent = () => {
     setTextRows(numOfRows);
   }, [prompt]);
 
-  const handleLogin = useCallback(async () => {
-    try {
-      console.log('handleLogin');
-      if (!token) {
-        return;
-      }
-      const response = await axios.post(
-        BACKEND_URL + '/auth',
-        { token: token },
-        {
-          headers: {
-            'Content-Type': 'application/json;charset=UTF-8',
-          },
-        },
-      );
-      console.log(`handleLogin | response.data ${JSON.stringify(response.data, null, 2)}`);
-      localStorage.setItem(JWT_STORAGE_KEY, response.data.access_token);
-    } catch (error) {
-      console.error('An error occurred during login:', error);
-      setAlertMessage(`An error occurred while authenticating with the server: ${error}`);
-      setAlertOpen(true);
-    }
-  }, [token]);
-
-  const getHeaders = () => {
-    const jwtToken = localStorage.getItem(JWT_STORAGE_KEY);
-    const headers = {
-      'Content-Type': 'application/json;charset=UTF-8',
-      Authorization: 'Bearer ' + jwtToken,
-    };
-    return headers;
-  };
-
-  const getImagesList = useCallback(async () => {
-    const url = BACKEND_URL + '/images/list';
-    const headers = getHeaders();
-    console.log(`getImagesList: headers ${JSON.stringify(headers, null, 2)}`);
-    try {
-      const response = await axios.get(url, { headers });
-      console.log(`getImagesList | response.data ${JSON.stringify(response.data, null, 2)}`);
-      setUserImages(response.data.images);
-    } catch (error) {
-      console.log(`Failed to get images list: `, error);
-      setAlertMessage(`An error occurred while fetching your images: ${error}`);
-      setAlertOpen(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    const initialize = async () => {
-      await handleLogin();
-      await getImagesList();
-    };
-    initialize();
-  }, [token]);
-
-  const toggleExamples = () => {
-    setShowExamples(!showExamples); // Toggle example visibility
-  };
-
   const generateImages = async (event) => {
-    event.preventDefault(); // Prevent default form submission
+    event.preventDefault();
     setIsLoading(true);
-    // setShowExamples(false);  // Hide examples when generating an image
     setProgress(0);
 
     const startTime = Date.now();
     const steps = 40;
 
     const payload = {
+      use_binary: useBinary,
       engine: 'stable-diffusion-xl-1024-v1-0',
       steps: steps,
       width: width,
       height: height,
       seed: Math.floor(Math.random() * 10000),
       cfg_scale: 5,
-      samples: 2,
+      samples: 4,
       text_prompts: [
         {
+          // positive prompt
           text: prompt,
           weight: 1,
         },
         {
-          // "text": "blurry, bad",
+          // negative prompt
           text: 'blurry',
           weight: -1,
         },
       ],
-      // callback_steps: Math.max(Math.floor(steps / 4), 1),
       callback_steps: 5,
       callback_start: 25,
     };
@@ -300,7 +226,7 @@ const SDXLComponent = () => {
         <Grid container spacing={3} alignItems="center" paddingBottom="10px">
           <Grid item xs={9}>
             <TextField
-              label="Describe what you saw during your experience, being as visually descriptive as possible."
+              label="Your SDXL prompt"
               variant="outlined"
               fullWidth
               multiline // Allows multiple lines of text
@@ -322,36 +248,24 @@ const SDXLComponent = () => {
             </Button>
             <div style={{ height: '10px' }} />
             {isLoading && <LinearProgress variant="determinate" value={progress} />}
-            {/* <div style={{ height: '10px' }} />
-            <Button 
-              onClick={toggleExamples}
-              variant="contained"
-              color="secondary"
-              fullWidth
-            >
-              {showExamples ? `Hide Examples` : `Show Examples`}
-            </Button> */}
           </Grid>
         </Grid>
       </form>
       {images.length > 0 && (
         <Card>
-          {/* <CardContent>
-            <Typography variant="h5">Generations</Typography>
-          </CardContent> */}
-          <ImageList cols={2} gap={IMAGE_GAP}>
+          <ImageList cols={2} gap={10}>
             {images.map((img, index) => (
               <ImageListItem key={index} onClick={() => openModal(img)}>
                 <img src={img} alt={`Generated Content ${index}`} />
-                {!isLoading && (
+                {/* {!isLoading && (
                   <Button
                     variant="contained"
                     color="primary"
-                    // onClick={() => storeImage(img, index)}
+                    onClick={() => storeImage(img, index)}
                   >
                     Save
                   </Button>
-                )}
+                )} */}
               </ImageListItem>
             ))}
           </ImageList>
@@ -375,36 +289,6 @@ const SDXLComponent = () => {
           )}
         </Box>
       </Modal>
-      {showExamples && (
-        <Box width={1} paddingTop="10px">
-          <Card>
-            <CardContent>
-              <Typography variant="h5">Examples</Typography>
-              <ul>
-                {examplePrompts.map((example, index) => (
-                  <li key={index}>
-                    <Typography variant="h6">
-                      {example.text}
-                      <span style={{ fontStyle: 'italic' }}>
-                        {example.source === 'customer' ? '' : `(Source: ${example.source})`}
-                      </span>
-                    </Typography>
-                    <br></br>
-                    <ImageList cols={2} gap={IMAGE_GAP}>
-                      {example.images.map((imgURL, imgIndex) => (
-                        <ImageListItem key={imgIndex} onClick={() => openModal(imgURL)}>
-                          <img src={imgURL} alt={`Example Content ${imgIndex}`} />
-                        </ImageListItem>
-                      ))}
-                    </ImageList>
-                    <br></br>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        </Box>
-      )}
       <Snackbar
         open={alertOpen}
         autoHideDuration={6000}
