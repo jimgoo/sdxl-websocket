@@ -38,6 +38,7 @@ app.add_middleware(
 )
 
 class TextToImagePayload(BaseModel):
+    use_binary: bool
     engine: str
     steps: int
     width: int
