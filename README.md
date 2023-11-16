@@ -9,7 +9,7 @@ conda env create -f environment.yaml
 
 ### Run
 ```
-uvicorn main:app --host 0.0.0.0 --port 50217 --reload
+uvicorn backend:app --host 0.0.0.0 --port 50217 --reload
 ```
 
 ## Frontend
