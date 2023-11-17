@@ -2,12 +2,9 @@ import logging
 import time
 
 # web
-from fastapi import FastAPI, HTTPException, Request, Depends, File, UploadFile, Security, Response, WebSocket, WebSocketException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from fastapi_jwt import JwtAuthorizationCredentials, JwtAccessBearer
 import msgpack
 
 # model
@@ -56,7 +53,6 @@ pipe = DiffusionPipeline.from_pretrained(
     use_safetensors=True, 
     variant="fp16",
 ).to("cuda")
-#  pipe.unet = torch.compile(pipe.unet, mode="reduce-overhead", fullgraph=True)
 
 
 @app.websocket("/images/generate-ws")
@@ -65,19 +61,12 @@ async def generate_images_ws(
 ):
     logging.info('generate websocket: %s', websocket)
 
-    # <TODO> check if the user is authorized
-    credentials = {}
-    logging.info('generate credentials: %s', credentials)
-
     await websocket.accept()
-    # await websocket.send_json({"status": "connected"})
     
     # Receive payload as first message
     payload = await websocket.receive_json()
     payload = TextToImagePayload(**payload)
     logging.info('generate payload: %s', payload)
-
-    # queue = asyncio.Queue()
 
     def image_to_base64(image: Image):
         buffered = BytesIO()
@@ -90,7 +79,6 @@ async def generate_images_ws(
         return buffer.getvalue()
 
     def callback(step: int, timestep: int, latents: torch.FloatTensor, is_last: bool):
-        # print(f"Step {step}, timestep {timestep}, latents {latents.shape}")
         start_time = time.time()
     
         # make sure the VAE is in float32 mode, as it overflows in float16
@@ -115,6 +103,7 @@ async def generate_images_ws(
         
         # resize images if it's not the last step for speed
         if not is_last:
+            # this is the size used by MidJourney progress images
             size = (256, 256)
             for img in image:
                 img.thumbnail(size)
@@ -128,11 +117,6 @@ async def generate_images_ws(
             "artifacts": artifacts, 
         }
         logging.info('callback: step %s, is_last: %s, time: %.2f sec', update['step'], is_last, time.time() - start_time)
-        
-        # await websocket.send_json(update)
-        # queue.put_nowait(update)
-        # loop = asyncio.get_event_loop()
-        # loop.create_task(websocket.send_json(update))
 
         return update
 
@@ -157,9 +141,6 @@ async def generate_images_ws(
     negative_prompt_embeds = None
     pooled_prompt_embeds = None
     negative_pooled_prompt_embeds = None
-    output_type = 'pil'
-    return_dict = True
-    # callback_steps = 1
     callback_steps = payload.callback_steps
     cross_attention_kwargs = None
     guidance_rescale = 0.0
