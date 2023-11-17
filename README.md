@@ -1,6 +1,6 @@
 # SDXL - Websocket
 
-https://jgoode.s3.amazonaws.com/sdxl-websocket/sdxl-websocket-demo-4x.mp4
+![](https://jgoode.s3.amazonaws.com/sdxl-websocket/sdxl-websocket-demo-4x.mp4)
 
 ## Backend
 
