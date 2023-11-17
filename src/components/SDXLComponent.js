@@ -2,20 +2,18 @@ import React, { useState, useEffect } from 'react';
 import {
   Alert,
   Box,
-  TextField,
   Button,
+  CircularProgress,
+  Container,
   Card,
+  Grid,
   ImageList,
   ImageListItem,
   LinearProgress,
   Modal,
-  Typography,
-  CircularProgress,
-  Grid,
-  Container,
   Snackbar,
+  TextField,
 } from '@mui/material';
-import axios from 'axios';
 import * as msgpack from '@msgpack/msgpack';
 
 const SDXLComponent = () => {
@@ -26,13 +24,10 @@ const SDXLComponent = () => {
   const [progress, setProgress] = useState(0);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
-  const [currentStep, setCurrentStep] = useState(0);
   const [isModalOpen, setModalOpen] = useState(false);
   const [currentImage, setCurrentImage] = useState(null);
 
-  const BACKEND_BASE = 'localhost:50217';
-  const BACKEND_URL = `http://${BACKEND_BASE}`;
-  const BACKEND_URL_WS = `ws://${BACKEND_BASE}/images/generate-ws`;
+  const BACKEND_URL = `ws://localhost:50217/images/generate-ws`;
 
   const sizes = [[1024, 1024], [1536, 640]];
   const width = sizes[0][0];
@@ -74,21 +69,18 @@ const SDXLComponent = () => {
           weight: -1,
         },
       ],
-      callback_steps: 5,
-      callback_start: 25,
+      callback_steps: 5, // Number of steps between each callback that sends progress images
+      callback_start: 0, // Step to start sending progress images
     };
 
     console.log(`generateImages | payload ${JSON.stringify(payload, null, 2)}`);
 
     try {
-      const url = BACKEND_URL_WS;
-
       // Connect to WebSocket API
-      const ws = new WebSocket(url);
+      const ws = new WebSocket(BACKEND_URL);
 
       ws.onopen = (event) => {
         console.log('ws.onopen');
-        // TODO: send the auth info here and verify on the other end
         ws.send(JSON.stringify(payload));
       };
 
@@ -99,7 +91,6 @@ const SDXLComponent = () => {
             const blob = event.data;
             const arrayBuffer = await blob.arrayBuffer();
             const update = msgpack.decode(new Uint8Array(arrayBuffer));
-            // console.log(`ws.onmessage: update ${JSON.stringify(update, null, 2)}`);
 
             // Now update should be an object containing status, step, and artifacts
             if (update.status) {
@@ -108,7 +99,6 @@ const SDXLComponent = () => {
             if (update.step) {
               console.log(`ws.onmessage: step ${update.step}`);
               setProgress(Math.min((100 * update.step) / (steps - 1), 100));
-              setCurrentStep(update.step);
 
               if (update.step === steps - 1) {
                 setIsLoading(false);
@@ -119,7 +109,7 @@ const SDXLComponent = () => {
               }
             }
             if (update.artifacts) {
-              console.log(`onmessage: setting images`);
+              console.log(`ws.onmessage: setting images`);
 
               const newImages = []; // Array to hold new base64 images
 
@@ -161,7 +151,6 @@ const SDXLComponent = () => {
           if (update.step) {
             console.log(`ws.onmessage: step ${update.step}`);
             setProgress(Math.min((100 * update.step) / (steps - 1), 100));
-            setCurrentStep(update.step);
 
             if (update.step === steps - 1) {
               setIsLoading(false);
@@ -172,10 +161,9 @@ const SDXLComponent = () => {
             }
           }
           if (update.artifacts) {
-            console.log(`onmessage: setting images`);
-            // <TODO> use jpeg instead of png
+            console.log(`ws.onmessage: setting images`);
             const base64Images = update.artifacts.map(
-              (imgData) => `data:image/png;base64,${imgData.base64}`,
+              (imgData) => `data:image/jpeg;base64,${imgData.base64}`,
             );
             setImages(base64Images);
           }
@@ -198,8 +186,6 @@ const SDXLComponent = () => {
         setAlertOpen(true);
         setIsLoading(false);
       };
-
-      // getImagesList(); // refetch the user's images
     } catch (error) {
       console.error('Error generating image:', error, ', response:', error.response);
       setProgress(0);
@@ -257,15 +243,6 @@ const SDXLComponent = () => {
             {images.map((img, index) => (
               <ImageListItem key={index} onClick={() => openModal(img)}>
                 <img src={img} alt={`Generated Content ${index}`} />
-                {/* {!isLoading && (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => storeImage(img, index)}
-                  >
-                    Save
-                  </Button>
-                )} */}
               </ImageListItem>
             ))}
           </ImageList>
