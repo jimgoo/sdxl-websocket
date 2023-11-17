@@ -31,9 +31,7 @@ npm start
 
 As the MidJourney Discord bot is generating images for your prompt over some number of diffusion steps, it makes the wait time a little more enjoyable by showing you your images at the current step. The video below demonstrates the user experience for the prompt 'A fox in a misty forest', showcasing the image generation process:
 
-<video autoPlay loop muted controls style={{ width: '640px', height: '360px' }}>
-  <source src="https://jgoode.s3.amazonaws.com/sdxl-websocket/midjourney-demo.mp4" />
-</video>
+https://github.com/jimgoo/sdxl-websocket/assets/2735842/719260c1-3222-487e-9ca5-ea45cf1f68b7
 
 If you count them there are eight incremental updates where the images change. I found that each of the four images during incremental updates is 256 x 256, then in the last update the size is 1024 x 1024. One run takes about 30 seconds on average for my account with the $10/month plan.
 
