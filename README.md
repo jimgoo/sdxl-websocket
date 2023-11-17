@@ -1,6 +1,6 @@
 # SDXL - Websocket
 
-https://github.com/jimgoo/sdxl-websocket/assets/2735842/541bddcb-113e-42d0-9515-718a6d5a28cc
+https://github.com/jimgoo/sdxl-websocket/assets/2735842/66144701-9e4f-4303-9aff-67c4c7d995a6
 
 ## Backend
 
